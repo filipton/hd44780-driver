@@ -7,6 +7,7 @@ use crate::{bus::DataBus, error::Result};
 pub struct I2CBus<I2C> {
 	i2c_bus: I2C,
 	address: u8,
+	backlight: bool,
 }
 
 const BACKLIGHT: u8 = 0b0000_1000;
@@ -16,7 +17,7 @@ const REGISTER_SELECT: u8 = 0b0000_0001;
 
 impl<I2C> I2CBus<I2C> {
 	pub fn new(i2c_bus: I2C, address: u8) -> I2CBus<I2C> {
-		I2CBus { i2c_bus, address }
+		I2CBus { i2c_bus, address, backlight: true }
 	}
 
 	pub fn destroy(self) -> I2C {
@@ -32,7 +33,7 @@ impl<I2C: I2c> I2CBus<I2C> {
 			false => 0u8,
 			true => REGISTER_SELECT,
 		};
-		let byte = nibble | rs | BACKLIGHT;
+		let byte = nibble | rs | if self.backlight { BACKLIGHT } else { 0 };
 
 		self.i2c_bus.write(self.address, &[byte, byte | ENABLE]).map_err(Error::wrap_io(Port::I2C))?;
 		delay.delay_ms(2u32);
@@ -49,6 +50,13 @@ impl<I2C: I2c> DataBus for I2CBus<I2C> {
 
 		let lower_nibble = (byte & 0x0F) << 4;
 		self.write_nibble(lower_nibble, data, delay)?;
+
+		Ok(())
+	}
+
+	fn set_backlight<D: DelayNs>(&mut self, state: bool, delay: &mut D) -> Result<(), Self::Error> {
+		self.backlight = state;
+		self.write(0, false, delay)?;
 
 		Ok(())
 	}
@@ -80,7 +88,7 @@ mod non_blocking {
 				false => 0u8,
 				true => REGISTER_SELECT,
 			};
-			let byte = nibble | rs | BACKLIGHT;
+			let byte = nibble | rs | if self.backlight { BACKLIGHT } else { 0 };
 
 			self.i2c_bus.write(self.address, &[byte, byte | ENABLE]).await.map_err(Error::wrap_io(Port::I2C))?;
 			delay.delay_ms(2).await;
@@ -92,6 +100,7 @@ mod non_blocking {
 		type Error = I2C::Error;
 
 		type WriteFuture<'a, D: 'a + DelayNs> = impl Future<Output = Result<(), Self::Error>> + 'a;
+		type SetBacklightFuture<'a, D: 'a + DelayNs> = impl Future<Output = Result<(), Self::Error>> + 'a;
 
 		fn write<'a, D: DelayNs + 'a>(
 			&'a mut self,
@@ -105,6 +114,19 @@ mod non_blocking {
 
 				let lower_nibble = (byte & 0x0F) << 4;
 				self.write_nibble_non_blocking(lower_nibble, data, delay).await?;
+
+				Ok(())
+			}
+		}
+
+		fn set_backlight<'a, D: DelayNs + 'a>(
+			&'a mut self,
+			state: bool,
+			delay: &'a mut D,
+		) -> Self::SetBacklightFuture<'a, D> {
+			async move {
+				self.backlight = state;
+				self.write(0, false, delay).await?;
 
 				Ok(())
 			}

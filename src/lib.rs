@@ -341,6 +341,15 @@ where
 		Ok(())
 	}
 
+	pub fn set_backlight<D: DelayNs>(&mut self, state: bool, delay: &mut D) -> Result<(), B::Error> {
+		self.bus.set_backlight(state, delay)?;
+
+		// Wait for the command to be processed
+		delay.delay_us(100);
+
+		Ok(())
+	}
+
 	// Pulse the enable pin telling the HD44780 that we something for it
 	/*fn pulse_enable(&mut self) {
 		self.en.set_high();

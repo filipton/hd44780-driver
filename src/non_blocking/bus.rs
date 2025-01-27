@@ -14,7 +14,16 @@ pub trait DataBus {
 	where
 		Self: 'a;
 
+	type SetBacklightFuture<'a, D: 'a + DelayNs>: Future<Output = Result<(), Self::Error>>
+	where
+		Self: 'a;
+
 	fn write<'a, D: DelayNs + 'a>(&'a mut self, byte: u8, data: bool, delay: &'a mut D) -> Self::WriteFuture<'a, D>;
+	fn set_backlight<'a, D: DelayNs + 'a>(
+		&'a mut self,
+		state: bool,
+		delay: &'a mut D,
+	) -> Self::SetBacklightFuture<'a, D>;
 
 	// TODO
 	// fn read(...)

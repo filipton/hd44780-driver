@@ -101,6 +101,10 @@ impl<
 
 		Ok(())
 	}
+
+	fn set_backlight<D: DelayNs>(&mut self, _state: bool, _delay: &mut D) -> Result<(), Self::Error> {
+		Ok(())
+	}
 }
 
 #[cfg(feature = "async")]
@@ -129,6 +133,7 @@ mod non_blocking {
 		type Error = E;
 
 		type WriteFuture<'a, D: 'a + DelayNs> = impl Future<Output = Result<(), Self::Error>> + 'a;
+		type SetBacklightFuture<'a, D: 'a + DelayNs> = impl Future<Output = Result<(), Self::Error>> + 'a;
 
 		fn write<'a, D: DelayNs + 'a>(
 			&'a mut self,
@@ -158,6 +163,14 @@ mod non_blocking {
 
 				Ok(())
 			}
+		}
+
+		fn set_backlight<'a, D: DelayNs + 'a>(
+			&'a mut self,
+			_state: bool,
+			_delay: &'a mut D,
+		) -> Self::SetBacklightFuture<'a, D> {
+			async move { Ok(()) }
 		}
 	}
 }

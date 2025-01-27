@@ -14,6 +14,7 @@ pub trait DataBus {
 	type Error: core::fmt::Debug;
 
 	fn write<D: DelayNs>(&mut self, byte: u8, data: bool, delay: &mut D) -> Result<(), Self::Error>;
+	fn set_backlight<D: DelayNs>(&mut self, state: bool, delay: &mut D) -> Result<(), Self::Error>;
 
 	// TODO
 	// fn read(...)
